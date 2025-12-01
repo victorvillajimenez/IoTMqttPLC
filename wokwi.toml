@@ -1,0 +1,13 @@
+[[pins]]
+name = "LED"
+value = "HIGH"
+
+[wokwi]
+version = 1
+firmware = ".pio/build/esp32dev/firmware.bin"
+elf = ".pio/build/esp32dev/firmware.elf"
+
+# Optional: Configure MQTT broker settings
+[mqtt]
+host = "broker.hivemq.com"  # Default public MQTT broker
+port = 1883
