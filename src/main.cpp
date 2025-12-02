@@ -26,7 +26,13 @@ PubSubClient client(net);
 // WiFiClient espClient;
 // PubSubClient client(espClient);
 
-//-------- TOPICS ---------//
+/*-------- TOPICS ---------
+  Path structure topic:
+    company/
+    company/cell
+    company/cell/plc
+    company/cell/plc/sensorOrActuator
+*/
 const char *channelTopic_heartbeat = "acme/commands/heartbeat"; // SUB
 const char *channelTopic_heartbeat_callback = "acme/commands/heartbeat/callback"; // PUB
 const char *channelTopic_sensor1 = "acme/cell35/ac1/temp1"; // PUB
@@ -36,7 +42,7 @@ int randomInt () {
   srand(time(NULL)); // Seed the random number generator
   // int min = -55; // MIN ARMY TEMP
   // int max = 125; // MAX ARMY TEMP
-  // int dice_roll = (rand() % (max - min + 1)) + min; // Seed does not work on SPE32
+  // int dice_roll = (rand() % (max - min + 1)) + min; // Seed does not work on ESP32
   int min = -30;
   int max = 100;
   int dice_roll = (esp_random() % (max - min + 1)) + min;
@@ -70,11 +76,11 @@ int threshold = 2;
 /* ============= SETUP WIFI ============= */
 void setup_wifi () {
   delay(100);
-  // Determinar MAC address
+  // MAC address
   Serial.println();
   Serial.print("MAC Address Network device is: ");
   Serial.println(WiFi.macAddress());
-  // Conectar a WiFi
+  // Connect to WiFi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.println("Connecting");
   while (WiFi.status() != WL_CONNECTED) {
@@ -104,7 +110,7 @@ void callback (char* topic, byte* payload, unsigned int length) {
     // Heartbeat response
     Serial.println("Heartbeat response received.");
 
-    // create a string message with differentent content joined by commas
+    // create a string message with different content joined by commas
     String heartbeatMsg = builtSensorMessage(channelTopic_sensor1, desirable, value, alive, status);
     client.publish(channelTopic_heartbeat_callback, heartbeatMsg.c_str());
     return;
@@ -117,34 +123,25 @@ void callback (char* topic, byte* payload, unsigned int length) {
     return;
   }
   // int p = (char)payload[0] - '0';
-  // if (p == 1) { // Si el broker MQTT envía un "1", el LED_RED en GPI012 se enciende
-  //   digitalWrite(LED_RED, HIGH);
-  //   Serial.println("*** El LED ROJO fue encendido de manera remota ***");
-  // }
-  // if (p == 0) { // Si el broker MQTT envía un "0", el LED_RED en GPI012 se apaga
-  //   digitalWrite(LED_RED, LOW);
-  //   Serial.println("*** El LED ROJO fue apagado de manera remota ***");
-  // }
   Serial.println();
 }
 
 /* ============= MQTT BROKER RE-CONNECTION ============= */
 void reconnect () {
-  // Conectar al broker MQTT
   while (!client.connected()) {
     Serial.print("Connecting to MQTT Broker");
     Serial.println("");
-    // Crear una ID de cliente aleatoria
+    // Create a random ID client
     String clientId = "ESP32Client-";
     clientId += String(random(0xffff), HEX);
-    //Intenta volver a conectarse ...
-    // ... en caso de que el "broker" tenga ID de cliente, nombre de usuario y contraseña
-    // ... cambiar la siguiente línea a --> if (client.connect(clientId, MQTT_USER, MQTT_PASS))
     Serial.println(clientId);
+    // Re-try to connecting ...
+    // ... in case the "broker" has an ID client, username and password
+    // ... change the next line to --> if (client.connect(clientId, MQTT_USER, MQTT_PASS))
     // if (client.connect(clientId.c_str())) {
     if (client.connect(clientId.c_str(), MQTT_USER, MQTT_PASS)) {
       Serial.println("MQTT Broker is connected");
-      // Una vez conectado al broker MQTT, suscribirse a los temas
+      // Once the MQTT Broker is connected, then subscribe to the topics
       client.subscribe(channelTopic_heartbeat);
       client.subscribe(channelTopic_sensor1_set);
       String heartbeatMsg = builtSensorMessage(channelTopic_sensor1, desirable, value, alive, status);
@@ -152,8 +149,8 @@ void reconnect () {
     } else {
       Serial.print("Connection error: ");
       Serial.print(client.state());
-      Serial.println(" ... next try in 5 seconds.");
-      // Espera de 5 segundos para el próximo intento de conexión
+      Serial.println("... next try in 5 seconds.");
+      // Wait for 5 seconds to the next connection try.
       delay(5000);
     }
   }
@@ -169,7 +166,7 @@ void setup () {
   // Quick test only: skip certificate validation
   // (Use setCACert(root_ca) later for production)
   net.setInsecure();
-  client.setServer(MQTT_SERVER, MQTT_PORT); // Puerto TCP 1883, estándar en MQTT
+  client.setServer(MQTT_SERVER, MQTT_PORT); // TCP Port 1883, MQTT standard
   client.setCallback(callback);
   pinMode(BUTTON, INPUT);
   pinMode(LED_BLUE, OUTPUT);
@@ -186,12 +183,12 @@ void loop () {
     reconnect();
   }
   client.loop();
-  long now = millis(); // Lectura del reloj del sistema en milisegundos
-  // Validar (por control de tiempo) si han pasado 1 segundos desde el informe anterior
+  long now = millis(); // Read from system clock time in milliseconds
+  // Validate (by time control) if 1 second has passed since previous report.
   if (now - PastTime > 1000) {
     PastTime = now;
 
-    // Simular cambio de temperatura
+    // Simulate temperature change
     if (status == "idle") {
       if (value < desirable - threshold) {
         status = "heating";
@@ -209,7 +206,7 @@ void loop () {
         status = "idle";
       }
     }
-    // Actualizar estado de los LEDs o Actuadores según el estado del sistema
+    // Update LEDs or Actuators state according to system status
     if (status == "heating") {
       digitalWrite(LED_BLUE, LOW);
       digitalWrite(LED_RED, HIGH);
@@ -220,7 +217,7 @@ void loop () {
       digitalWrite(LED_BLUE, LOW);
       digitalWrite(LED_RED, LOW);
     }
-    // Publicar datos del sensor de temperatura
+    // Publishing temperature sensor data
     String sensorMsg = builtSensorMessage(channelTopic_sensor1, desirable, value, alive, status);
     sensorMsg.toCharArray(msg, 50);
     Serial.print("Publishing message: ");
