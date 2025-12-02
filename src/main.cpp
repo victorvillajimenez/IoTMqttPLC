@@ -16,10 +16,10 @@ const char* WIFI_SSID = "Wokwi-GUEST";
 const char* WIFI_PASSWORD = "";
 
 //-------- Broker MQTT ---------//
-const char* MQTT_SERVER = "broker.hivemq.com";
+const char* MQTT_SERVER = "broker.hivemq.com"; // TODO add server
 const uint16_t MQTT_PORT = 8883; // TLS port
-const char* MQTT_USER = "";
-const char* MQTT_PASS = "";
+const char* MQTT_USER = ""; // TODO add username
+const char* MQTT_PASS = ""; // TODO add password
 
 WiFiClientSecure net; // TLS socket
 PubSubClient client(net);
@@ -72,7 +72,7 @@ void setup_wifi () {
   delay(100);
   // Determinar MAC address
   Serial.println();
-  Serial.print("La direccion MAC del dispositivo de red es: ");
+  Serial.print("MAC Address Network device is: ");
   Serial.println(WiFi.macAddress());
   // Conectar a WiFi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -82,13 +82,13 @@ void setup_wifi () {
     Serial.print(".");
   }
   Serial.println("");
-  Serial.print("Se ha aceptado el wifi con la direccion IP: ");
+  Serial.print("WiFi accepted with IP address: ");
   Serial.println(WiFi.localIP());
 }
 
 /* ============= CALLBACK SUBSCRIPTION ============= */
 void callback (char* topic, byte* payload, unsigned int length) {
-  Serial.print("Mensaje recibido [");;
+  Serial.print("Message received [");;
   Serial.print(topic);
   Serial.print("] ");
   String sPayload_digits;
@@ -101,8 +101,8 @@ void callback (char* topic, byte* payload, unsigned int length) {
   }
   Serial.println("payload(string): [" + sPayload + "]: " + sPayload_digits);
   if (strcmp(topic, channelTopic_heartbeat) == 0) {
-    // Responder al latido de corazón
-    Serial.println("Respuesta al latido de corazón recibida.");
+    // Heartbeat response
+    Serial.println("Heartbeat response received.");
 
     // create a string message with differentent content joined by commas
     String heartbeatMsg = builtSensorMessage(channelTopic_sensor1, desirable, value, alive, status);
@@ -132,10 +132,10 @@ void callback (char* topic, byte* payload, unsigned int length) {
 void reconnect () {
   // Conectar al broker MQTT
   while (!client.connected()) {
-    Serial.print("Conectando al broker MQTT");
+    Serial.print("Connecting to MQTT Broker");
     Serial.println("");
     // Crear una ID de cliente aleatoria
-    String clientId = "ESP8266Client-";
+    String clientId = "ESP32Client-";
     clientId += String(random(0xffff), HEX);
     //Intenta volver a conectarse ...
     // ... en caso de que el "broker" tenga ID de cliente, nombre de usuario y contraseña
@@ -143,16 +143,16 @@ void reconnect () {
     Serial.println(clientId);
     // if (client.connect(clientId.c_str())) {
     if (client.connect(clientId.c_str(), MQTT_USER, MQTT_PASS)) {
-      Serial.println("El broker MQTT esta conectado");
+      Serial.println("MQTT Broker is connected");
       // Una vez conectado al broker MQTT, suscribirse a los temas
       client.subscribe(channelTopic_heartbeat);
       client.subscribe(channelTopic_sensor1_set);
       String heartbeatMsg = builtSensorMessage(channelTopic_sensor1, desirable, value, alive, status);
       client.publish(channelTopic_heartbeat_callback, heartbeatMsg.c_str());
     } else {
-      Serial.print("Error de conexion: ");
+      Serial.print("Connection error: ");
       Serial.print(client.state());
-      Serial.println(" ... proximo intento en 5 segundos.");
+      Serial.println(" ... next try in 5 seconds.");
       // Espera de 5 segundos para el próximo intento de conexión
       delay(5000);
     }
@@ -223,7 +223,7 @@ void loop () {
     // Publicar datos del sensor de temperatura
     String sensorMsg = builtSensorMessage(channelTopic_sensor1, desirable, value, alive, status);
     sensorMsg.toCharArray(msg, 50);
-    Serial.print("Publicando mensaje: ");
+    Serial.print("Publishing message: ");
     Serial.println(msg);
     client.publish(channelTopic_sensor1, msg);
 
